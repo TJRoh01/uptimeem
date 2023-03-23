@@ -5,3 +5,5 @@ authors = ["Tomas Rohatynski"]
 edition = "2021"
 
 [dependencies]
+surge-ping = "0.7.3"
+tokio = { version = "1.26.0", features = ["macros", "net", "rt-multi-thread", "time"]}
