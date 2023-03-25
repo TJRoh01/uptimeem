@@ -11,6 +11,8 @@ use tokio::time::MissedTickBehavior;
 const PING_INTERVAL: Duration = Duration::from_secs(3);
 const PING_TIMEOUT: Duration = Duration::from_secs(1);
 
+type SharedState = Arc<RwLock<HashMap<IpAddr, RwLock<Metric>>>>;
+
 #[derive(Debug)]
 struct Metric {
     t_pings: u16, // total pings
@@ -19,7 +21,7 @@ struct Metric {
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 4)]
 async fn main() {
-    let state: Arc<RwLock<HashMap<IpAddr, RwLock<Metric>>>> = Arc::new(RwLock::new(HashMap::new()));
+    let state: SharedState = Arc::new(RwLock::new(HashMap::new()));
 
     let client_v4 = Client::new(&Config::builder().kind(ICMP::V4).build()).unwrap();
     let client_v6 = Client::new(&Config::builder().kind(ICMP::V6).build()).unwrap();
@@ -60,7 +62,7 @@ async fn main() {
 }
 
 // continuously ping given address
-async fn ping_loop(client: Client, ip: IpAddr, state: Arc<RwLock<HashMap<IpAddr, RwLock<Metric>>>>) {
+async fn ping_loop(client: Client, ip: IpAddr, state: SharedState) {
     let mut interval = tokio::time::interval(PING_INTERVAL);
     interval.set_missed_tick_behavior(MissedTickBehavior::Delay);
 
@@ -72,23 +74,30 @@ async fn ping_loop(client: Client, ip: IpAddr, state: Arc<RwLock<HashMap<IpAddr,
 
     loop {
         interval.tick().await;
-        let ping_sequence = PingSequence(n_sequence);
 
-        match pinger.ping(ping_sequence, &[]).await {
-            Ok((packet, _rtt)) => {
-                if packet.get_identifier() == ping_identifier && packet.get_sequence() == ping_sequence {
-                    state.read().await.get(&ip).unwrap().write().await.s_pings += 1;
-                }
-            },
-            _ => {}
+        let state_lock = state.read().await;
+
+        let state = match state_lock.get(&ip) {
+            Some(x) => x,
+            None => break
         };
 
-        if state.read().await.get(&ip).unwrap().read().await.t_pings == u16::MAX {
-            state.read().await.get(&ip).unwrap().write().await.t_pings = 0;
-            state.read().await.get(&ip).unwrap().write().await.s_pings = 0;
-        } else {
-            state.read().await.get(&ip).unwrap().write().await.t_pings += 1;
+        let ping_sequence = PingSequence(n_sequence);
+
+        if let Ok((packet, _rtt)) = pinger.ping(ping_sequence, &[]).await {
+            if packet.get_identifier() == ping_identifier && packet.get_sequence() == ping_sequence {
+                state.write().await.s_pings += 1;
+            }
         }
+
+        if state.read().await.t_pings == u16::MAX {
+            (*state.write().await).t_pings = 0;
+            (*state.write().await).s_pings = 0;
+        } else {
+            state.write().await.t_pings += 1;
+        }
+
+        drop(state_lock);
 
         if n_sequence == u16::MAX {
             n_sequence = 0;
