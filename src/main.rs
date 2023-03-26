@@ -14,8 +14,8 @@ use crate::state::SharedState;
 
 mod state;
 
-const PING_INTERVAL: Duration = Duration::from_secs(5);
-const PING_TIMEOUT: Duration = Duration::from_secs(3);
+const PING_INTERVAL: Duration = Duration::from_secs(15);
+const PING_TIMEOUT: Duration = Duration::from_secs(5);
 
 type SharedJoinSet = Arc<Mutex<JoinSet<()>>>;
 
