@@ -5,6 +5,7 @@ authors = ["Tomas Rohatynski"]
 edition = "2021"
 
 [dependencies]
+hyper = { version = "0.14.25", features = ["full"] }
 rand = "0.8.5"
 surge-ping = "0.7.3"
 tokio = { version = "1.26.0", features = ["macros", "net", "rt-multi-thread", "time"]}

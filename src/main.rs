@@ -1,16 +1,20 @@
 use std::collections::HashMap;
-use std::net::IpAddr;
+use std::convert::Infallible;
+use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 use std::time::Duration;
+use hyper::{Body, Request, Response, Server};
+use hyper::service::{make_service_fn, service_fn};
 
 use surge_ping::{Client, Config, ICMP, PingIdentifier, PingSequence};
-use tokio::sync::RwLock;
+use tokio::sync::{Mutex, RwLock};
 use tokio::task::JoinSet;
 use tokio::time::MissedTickBehavior;
 
 const PING_INTERVAL: Duration = Duration::from_secs(5);
 const PING_TIMEOUT: Duration = Duration::from_secs(3);
 
+type SharedJoinSet = Arc<Mutex<JoinSet<()>>>;
 type SharedState = Arc<RwLock<HashMap<IpAddr, Metric>>>;
 
 struct Metric(RwLock<MetricInner>);
@@ -25,7 +29,7 @@ struct MetricInner {
 impl Metric {
     fn new() -> Self {
         Self(RwLock::new(MetricInner {
-            availability: "EE%",
+            availability: "??.??%",
             t_pings: 0,
             s_pings: 0,
         }))
@@ -86,8 +90,8 @@ impl Metric {
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 4)]
 async fn main() {
-    let state: SharedState = Arc::new(RwLock::new(HashMap::new()));
-
+    let shared_join_set: SharedJoinSet = Arc::new(Mutex::new(JoinSet::new()));
+    let shared_state: SharedState = Arc::new(RwLock::new(HashMap::new()));
     let client_v4 = Client::new(&Config::builder().kind(ICMP::V4).build()).unwrap();
     let client_v6 = Client::new(&Config::builder().kind(ICMP::V6).build()).unwrap();
 
@@ -97,34 +101,66 @@ async fn main() {
     }
     */
 
-    let mut tasks = JoinSet::new();
+    let make_service = make_service_fn(move |_conn| {
+        let shared_join_set = shared_join_set.clone();
+        let shared_state = shared_state.clone();
+        let client_v4 = client_v4.clone();
+        let client_v6 = client_v6.clone();
 
-    let ips = vec!["google.com", "1.1.1.1", "www.gitlab.com"];
+        let service = service_fn(move |req|
+            handle(shared_join_set.clone(), shared_state.clone(), client_v4.clone(), client_v6.clone(), req)
+        );
 
-    for ip in ips {
-        let ip = tokio::net::lookup_host(format!("{}:0", ip))
-            .await
-            .expect("host lookup error")
-            .next()
-            .map(|val| val.ip())
-            .unwrap();
+        async move { Ok::<_, Infallible>(service) }
+    });
 
-        if state.read().await.get(&ip).is_none() {
-            state.write().await.insert(ip.clone(), Metric::new());
+    let addr = SocketAddr::from(([127, 0, 0, 1], 9999));
+    let server = Server::bind(&addr).serve(make_service);
 
-            if ip.is_ipv4() {
-                tasks.spawn(ping_loop(client_v4.clone(), ip, state.clone()));
-            } else if ip.is_ipv6() {
-                tasks.spawn(ping_loop(client_v6.clone(), ip, state.clone()));
-            }
-        }
+    if let Err(e) = server.await {
+        eprintln!("server error: {}", e);
     }
+}
 
-    while let Some(_) = tasks.join_next().await {}
+async fn handle(
+    shared_join_set: SharedJoinSet,
+    shared_state: SharedState,
+    client_v4: Client,
+    client_v6: Client,
+    req: Request<Body>,
+) -> Result<Response<Body>, Infallible> {
+    let ip_str = match &req.uri().path()[1..] {
+        x if x.len() <= 255 && !x.contains("/") => x,
+        _ => return Ok(Response::new(Body::empty()))
+    };
+
+    let ip_addr = match tokio::net::lookup_host(ip_str)
+        .await
+        .expect("host lookup error")
+        .next()
+        .map(|val| val.ip())
+    {
+        Some(x) => x,
+        _ => return Ok(Response::new(Body::empty()))
+    };
+
+    if shared_state.read().await.get(&ip_addr).is_none() {
+        shared_state.write().await.insert(ip_addr.clone(), Metric::new());
+
+        if ip_addr.is_ipv4() {
+            shared_join_set.lock().await.spawn(ping_loop(shared_state.clone(), client_v4.clone(), ip_addr));
+        } else if ip_addr.is_ipv6() {
+            shared_join_set.lock().await.spawn(ping_loop(shared_state.clone(), client_v6.clone(), ip_addr));
+        }
+
+        Ok(Response::new(Body::empty()))
+    } else {
+        Ok(Response::new(Body::empty()))
+    }
 }
 
 // continuously ping given address
-async fn ping_loop(client: Client, ip: IpAddr, state: SharedState) {
+async fn ping_loop(shared_state: SharedState, client: Client, ip: IpAddr) {
     let mut interval = tokio::time::interval(PING_INTERVAL);
     interval.set_missed_tick_behavior(MissedTickBehavior::Delay);
 
@@ -137,7 +173,7 @@ async fn ping_loop(client: Client, ip: IpAddr, state: SharedState) {
     loop {
         interval.tick().await;
 
-        let state_lock = state.read().await;
+        let state_lock = shared_state.read().await;
 
         let state = match state_lock.get(&ip) {
             Some(x) => x,
