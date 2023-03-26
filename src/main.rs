@@ -29,7 +29,7 @@ struct MetricInner {
 impl Metric {
     fn new() -> Self {
         Self(RwLock::new(MetricInner {
-            availability: "??.??%",
+            availability: "??%",
             t_pings: 0,
             s_pings: 0,
         }))
@@ -130,32 +130,54 @@ async fn handle(
     req: Request<Body>,
 ) -> Result<Response<Body>, Infallible> {
     let ip_str = match &req.uri().path()[1..] {
-        x if x.len() <= 255 && !x.contains("/") => x,
-        _ => return Ok(Response::new(Body::empty()))
+        x if x.len() > 0 && x.len() < 256 => x,
+        _ => return Ok(Response::new(Body::from("{\
+            \"schemaVersion\": 1,\
+            \"label\": \"uptime\",\
+            \"message\": \"invalid hostname\",\
+            \"color\": \"critical\",\
+            \"isError\": true\
+            }"
+        )))
     };
 
     let ip_addr = match tokio::net::lookup_host(ip_str)
         .await
-        .expect("host lookup error")
-        .next()
-        .map(|val| val.ip())
+        .map(|mut x| x.next().map(|x| x.ip()))
     {
-        Some(x) => x,
-        _ => return Ok(Response::new(Body::empty()))
+        Ok(Some(x)) => x,
+        _ => return Ok(Response::new(Body::from("{\
+            \"schemaVersion\": 1,\
+            \"label\": \"uptime\",\
+            \"message\": \"unreachable hostname\",\
+            \"color\": \"critical\",\
+            \"isError\": true\
+            }"
+        )))
     };
 
     if shared_state.read().await.get(&ip_addr).is_none() {
         shared_state.write().await.insert(ip_addr.clone(), Metric::new());
 
         if ip_addr.is_ipv4() {
-            shared_join_set.lock().await.spawn(ping_loop(shared_state.clone(), client_v4.clone(), ip_addr));
+            shared_join_set.lock().await.spawn(ping_loop(shared_state.clone(), client_v4.clone(), ip_addr.clone()));
         } else if ip_addr.is_ipv6() {
-            shared_join_set.lock().await.spawn(ping_loop(shared_state.clone(), client_v6.clone(), ip_addr));
+            shared_join_set.lock().await.spawn(ping_loop(shared_state.clone(), client_v6.clone(), ip_addr.clone()));
         }
 
-        Ok(Response::new(Body::empty()))
+        return Ok(Response::new(Body::from("{\
+            \"schemaVersion\": 1,\
+            \"label\": \"uptime\",\
+            \"message\": \"??%\",\
+            }"
+        )))
     } else {
-        Ok(Response::new(Body::empty()))
+        return Ok(Response::new(Body::from(format!("{{\
+            \"schemaVersion\": 1,\
+            \"label\": \"uptime\",\
+            \"message\": \"{}\",\
+            }}", shared_state.read().await.get(&ip_addr).unwrap().get_availability_str().await
+        ))))
     }
 }
 
