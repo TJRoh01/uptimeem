@@ -6,6 +6,7 @@ use std::time::Duration;
 use hyper::{Body, Request, Response, Server};
 use hyper::service::{make_service_fn, service_fn};
 use surge_ping::{Client, Config, ICMP, PingIdentifier, PingSequence};
+use tokio::net::lookup_host;
 use tokio::sync::Mutex;
 use tokio::task::JoinSet;
 use tokio::time::MissedTickBehavior;
@@ -60,19 +61,24 @@ async fn handle(
     client_v6: Client,
     req: Request<Body>,
 ) -> Result<Response<Body>, Infallible> {
-    let ip_str = match &req.uri().path()[1..] {
-        x if x.len() > 0 && x.len() < 256 => x,
-        _ => return Ok(Response::new(Body::from("{\
+    let (representation, ip_str) = match req.uri().path().split("/").collect::<Vec<&str>>()[..] {
+        ["by_avg", target] if target.len() > 0 && target.len() <= 253 => ("by_avg", target),
+        ["by_loss", target] if target.len() > 0 && target.len() <= 253 => ("by_loss", target),
+        _ => {
+            dbg!(req.uri().path().split("/").collect::<Vec<&str>>());
+
+            return Ok(Response::new(Body::from("{\
             \"schemaVersion\": 1,\
             \"label\": \"uptime\",\
-            \"message\": \"invalid hostname\",\
+            \"message\": \"invalid parameters\",\
             \"color\": \"critical\",\
             \"isError\": true\
             }"
-        )))
+            )))
+        }
     };
 
-    let ip_addr = match tokio::net::lookup_host(ip_str)
+    let ip_addr = match lookup_host(format!("{}:0", ip_str))
         .await
         .map(|mut x| x.next().map(|x| x.ip()))
     {
@@ -87,7 +93,13 @@ async fn handle(
         )))
     };
 
-    match shared_state.get_availability_by_loss(&ip_addr).await {
+    let uptime_str = match representation {
+        "by_avg" => shared_state.get_availability_by_avg(&ip_addr).await,
+        "by_loss" => shared_state.get_availability_by_loss(&ip_addr).await,
+        _ => unreachable!()
+    };
+
+    match uptime_str {
         Some(x) => {
             return Ok(Response::new(Body::from(format!("{{\
                 \"schemaVersion\": 1,\
