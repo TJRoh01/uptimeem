@@ -1,97 +1,28 @@
-use std::collections::HashMap;
 use std::convert::Infallible;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 use std::time::Duration;
+
 use hyper::{Body, Request, Response, Server};
 use hyper::service::{make_service_fn, service_fn};
-
 use surge_ping::{Client, Config, ICMP, PingIdentifier, PingSequence};
-use tokio::sync::{Mutex, RwLock};
+use tokio::sync::Mutex;
 use tokio::task::JoinSet;
 use tokio::time::MissedTickBehavior;
+
+use crate::state::SharedState;
+
+mod state;
 
 const PING_INTERVAL: Duration = Duration::from_secs(5);
 const PING_TIMEOUT: Duration = Duration::from_secs(3);
 
 type SharedJoinSet = Arc<Mutex<JoinSet<()>>>;
-type SharedState = Arc<RwLock<HashMap<IpAddr, Metric>>>;
-
-struct Metric(RwLock<MetricInner>);
-
-#[derive(Debug)]
-struct MetricInner {
-    availability: &'static str,
-    t_pings: u16, // total pings
-    s_pings: u16  // successful pings
-}
-
-impl Metric {
-    fn new() -> Self {
-        Self(RwLock::new(MetricInner {
-            availability: "??%",
-            t_pings: 0,
-            s_pings: 0,
-        }))
-    }
-
-    async fn inc_s_t_pings(&self) {
-        self.check_reset().await;
-
-        let mut inner = self.0.write().await;
-        inner.t_pings += 1;
-        inner.s_pings += 1;
-        drop(inner);
-
-        self.set_availability_str().await;
-    }
-
-    async fn inc_t_pings(&self) {
-        self.check_reset().await;
-
-        let mut inner = self.0.write().await;
-        inner.t_pings += 1;
-        drop(inner);
-
-        self.set_availability_str().await;
-    }
-
-    async fn check_reset(&self) {
-        if self.0.read().await.t_pings == u16::MAX {
-            let mut inner = self.0.write().await;
-            (*inner).t_pings = 0;
-            (*inner).s_pings = 0;
-        }
-    }
-
-    async fn set_availability_str(&self) {
-        let mut inner = self.0.write().await;
-
-        (*inner).availability = match (inner.s_pings as f64) / (inner.t_pings as f64) {
-            x if x >= 0.99995 => ">99.99%",
-            x if x >= 0.9999 => "99.99%",
-            x if x >= 0.9995 => "99.95%",
-            x if x >= 0.999 => "99.9%",
-            x if x >= 0.998 => "99.8%",
-            x if x >= 0.995 => "99.5%",
-            x if x >= 0.99 => "99%",
-            x if x >= 0.98 => "98%",
-            x if x >= 0.97 => "97%",
-            x if x >= 0.95 => "95%",
-            x if x >= 0.90 => "90%",
-            _ => "<90%"
-        }
-    }
-
-    async fn get_availability_str(&self) -> &'static str {
-        self.0.read().await.availability
-    }
-}
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 4)]
 async fn main() {
     let shared_join_set: SharedJoinSet = Arc::new(Mutex::new(JoinSet::new()));
-    let shared_state: SharedState = Arc::new(RwLock::new(HashMap::new()));
+    let shared_state: SharedState = SharedState::new();
     let client_v4 = Client::new(&Config::builder().kind(ICMP::V4).build()).unwrap();
     let client_v6 = Client::new(&Config::builder().kind(ICMP::V6).build()).unwrap();
 
@@ -156,28 +87,31 @@ async fn handle(
         )))
     };
 
-    if shared_state.read().await.get(&ip_addr).is_none() {
-        shared_state.write().await.insert(ip_addr.clone(), Metric::new());
+    match shared_state.get_availability_by_loss(&ip_addr).await {
+        Some(x) => {
+            return Ok(Response::new(Body::from(format!("{{\
+                \"schemaVersion\": 1,\
+                \"label\": \"uptime\",\
+                \"message\": \"{}\"\
+                }}", x
+            ))))
+        },
+        None => {
+            shared_state.insert(ip_addr.clone()).await;
 
-        if ip_addr.is_ipv4() {
-            shared_join_set.lock().await.spawn(ping_loop(shared_state.clone(), client_v4.clone(), ip_addr.clone()));
-        } else if ip_addr.is_ipv6() {
-            shared_join_set.lock().await.spawn(ping_loop(shared_state.clone(), client_v6.clone(), ip_addr.clone()));
+            if ip_addr.is_ipv4() {
+                shared_join_set.lock().await.spawn(ping_loop(shared_state.clone(), client_v4.clone(), ip_addr));
+            } else if ip_addr.is_ipv6() {
+                shared_join_set.lock().await.spawn(ping_loop(shared_state.clone(), client_v6.clone(), ip_addr));
+            }
+
+            return Ok(Response::new(Body::from("{\
+                \"schemaVersion\": 1,\
+                \"label\": \"uptime\",\
+                \"message\": \"??%\"\
+                }"
+            )))
         }
-
-        return Ok(Response::new(Body::from("{\
-            \"schemaVersion\": 1,\
-            \"label\": \"uptime\",\
-            \"message\": \"??%\",\
-            }"
-        )))
-    } else {
-        return Ok(Response::new(Body::from(format!("{{\
-            \"schemaVersion\": 1,\
-            \"label\": \"uptime\",\
-            \"message\": \"{}\",\
-            }}", shared_state.read().await.get(&ip_addr).unwrap().get_availability_str().await
-        ))))
     }
 }
 
@@ -195,25 +129,20 @@ async fn ping_loop(shared_state: SharedState, client: Client, ip: IpAddr) {
     loop {
         interval.tick().await;
 
-        let state_lock = shared_state.read().await;
-
-        let state = match state_lock.get(&ip) {
-            Some(x) => x,
-            None => break
-        };
-
         let ping_sequence = PingSequence(n_sequence);
 
         match pinger.ping(ping_sequence, &[]).await {
             Ok((packet, _rtt)) if packet.get_identifier() == ping_identifier && packet.get_sequence() == ping_sequence => {
-                state.inc_s_t_pings().await;
+                if !shared_state.succ_ping(&ip).await {
+                    break
+                }
             },
             _ => {
-                state.inc_t_pings().await;
+                if !shared_state.fail_ping(&ip).await {
+                    break
+                }
             }
         }
-
-        drop(state_lock);
 
         if n_sequence == u16::MAX {
             n_sequence = 0;
