@@ -1,4 +1,5 @@
 use std::convert::Infallible;
+use std::env;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 use std::time::Duration;
@@ -22,16 +23,24 @@ type SharedJoinSet = Arc<Mutex<JoinSet<()>>>;
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 4)]
 async fn main() {
+    let interface = match env::var("IFACE") {
+        Ok(x) => Some(x),
+        _ => None
+    };
+
     let shared_join_set: SharedJoinSet = Arc::new(Mutex::new(JoinSet::new()));
     let shared_state: SharedState = SharedState::new();
-    let client_v4 = Client::new(&Config::builder().kind(ICMP::V4).build()).unwrap();
-    let client_v6 = Client::new(&Config::builder().kind(ICMP::V6).build()).unwrap();
 
-    /*
-    if let Some(interface) = opt.iface {
-        config_builder = config_builder.interface(&interface);
+    let mut config_v4 = Config::builder().kind(ICMP::V4);
+    let mut config_v6 = Config::builder().kind(ICMP::V6);
+
+    if let Some(interface) = interface {
+        config_v4 = config_v4.interface(&interface);
+        config_v6 = config_v6.interface(&interface);
     }
-    */
+
+    let client_v4 = Client::new(&config_v4.build()).unwrap();
+    let client_v6 = Client::new(&config_v6.build()).unwrap();
 
     let make_service = make_service_fn(move |_conn| {
         let shared_join_set = shared_join_set.clone();
