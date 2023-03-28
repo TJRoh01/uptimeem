@@ -62,8 +62,8 @@ async fn handle(
     req: Request<Body>,
 ) -> Result<Response<Body>, Infallible> {
     let (representation, ip_str) = match req.uri().path().trim_end_matches("/").split("/").skip(1).collect::<Vec<&str>>()[..] {
-        ["by_avg", target] if target.len() > 0 && target.len() <= 253 => ("by_avg", target),
-        ["by_loss", target] if target.len() > 0 && target.len() <= 253 => ("by_loss", target),
+        [target, "by_avg"] if target.len() > 0 && target.len() <= 253 => ("by_avg", target),
+        [target, "by_loss"] if target.len() > 0 && target.len() <= 253 => ("by_loss", target),
         _ => {
             dbg!(req.uri().path().split("/").collect::<Vec<&str>>());
 
