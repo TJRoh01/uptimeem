@@ -65,8 +65,6 @@ async fn handle(
         [target, "by_avg"] if target.len() > 0 && target.len() <= 253 => ("by_avg", target),
         [target, "by_loss"] if target.len() > 0 && target.len() <= 253 => ("by_loss", target),
         _ => {
-            dbg!(req.uri().path().split("/").collect::<Vec<&str>>());
-
             return Ok(Response::new(Body::from("{\
             \"schemaVersion\": 1,\
             \"label\": \"uptime\",\
