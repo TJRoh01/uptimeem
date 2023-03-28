@@ -46,7 +46,7 @@ async fn main() {
         async move { Ok::<_, Infallible>(service) }
     });
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 9999));
+    let addr = SocketAddr::from(([0, 0, 0, 0], 80));
     let server = Server::bind(&addr).serve(make_service);
 
     if let Err(e) = server.await {
