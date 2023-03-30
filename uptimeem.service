@@ -6,6 +6,8 @@ Wants=network-online.target
 [Service]
 ExecStart=/usr/bin/uptimeem
 Restart=always
+User=uptimeem
+Group=uptimeem
 
 [Install]
 WantedBy=multi-user.target
