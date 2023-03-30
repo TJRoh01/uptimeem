@@ -17,4 +17,7 @@ package = "uptimeem"
 
 [package.metadata.generate-rpm]
 post_install_script = "sudo setcap CAP_NET_RAW,CAP_NET_BIND_SERVICE=+eip /usr/bin/uptimeem"
-assets = [{ source = "target/release/uptimeem", dest = "/usr/bin/uptimeem", mode = "755", user = "root", group = "root" }]
+assets = [
+    { source = "target/release/uptimeem", dest = "/usr/bin/uptimeem", mode = "755", user = "root", group = "root" },
+    { source = "uptimeem.service", dest = "/usr/lib/systemd/system/uptimeem.service", mode = "644", user = "root", group = "root" }
+]

@@ -1,0 +1,11 @@
+[Unit]
+Description=uptimeem server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/bin/uptimeem
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
