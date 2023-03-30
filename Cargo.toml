@@ -1,6 +1,9 @@
 [package]
 name = "uptimeem"
 version = "0.1.0"
+description = "Service to monitor and report uptime of remote hosts"
+repository = "https://github.com/TJRoh01/uptimeem"
+license = "MIT OR Apache-2.0"
 authors = ["Tomas Rohatynski"]
 edition = "2021"
 
@@ -9,3 +12,9 @@ hyper = { version = "0.14.25", features = ["full"] }
 rand = "0.8.5"
 surge-ping = "0.7.3"
 tokio = { version = "1.26.0", features = ["macros", "net", "rt-multi-thread", "time"]}
+[package.metadata.rpm]
+package = "uptimeem"
+
+[package.metadata.generate-rpm]
+post_install_script = "sudo setcap CAP_NET_RAW,CAP_NET_BIND_SERVICE=+eip /usr/bin/uptimeem"
+assets = [{ source = "target/release/uptimeem", dest = "/usr/bin/uptimeem", mode = "755", user = "root", group = "root" }]
