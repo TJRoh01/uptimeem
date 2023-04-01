@@ -16,6 +16,7 @@ tokio = { version = "1.26.0", features = ["macros", "net", "rt-multi-thread", "t
 package = "uptimeem"
 
 [package.metadata.generate-rpm]
+release = "1"
 requires = { shadow-utils = "*" }
 post_install_script = "(getent group uptimeem >/dev/null || groupadd -r uptimeem) && (getent passwd uptimeem >/dev/null || useradd -r -g uptimeem -s /sbin/nologin -c \"User for running uptimeem.service\" uptimeem) && setcap CAP_NET_RAW,CAP_NET_BIND_SERVICE=+eip /usr/bin/uptimeem"
 assets = [
