@@ -9,8 +9,8 @@ pub struct SharedState(Arc<RwLock<HashMap<IpAddr, RwLock<Metric>>>>);
 
 #[derive(Debug)]
 struct Metric {
-    availability_by_avg: &'static str,
-    availability_by_loss: &'static str,
+    availability_by_avg: (&'static str, &'static str),
+    availability_by_loss: (&'static str, &'static str),
     t_pings: u16, // total pings
     s_pings: u16, // successful pings
     f_pings: u16  // failed pings
@@ -23,42 +23,42 @@ impl SharedState {
 
     pub async fn insert(&self, ip: IpAddr) {
         self.0.write().await.insert(ip, RwLock::new(Metric {
-            availability_by_avg: "??%",
-            availability_by_loss: ">99.99%",
+            availability_by_avg: ("??%", "lightgrey"),
+            availability_by_loss: (">99.99%", "brightgreen"),
             t_pings: 0,
             s_pings: 0,
             f_pings: 0
         }));
     }
 
-    pub async fn get_availability_by_avg(&self, ip: &IpAddr) -> Option<&'static str> {
+    pub async fn get_availability_by_avg(&self, ip: &IpAddr) -> Option<(&'static str, &'static str)> {
         match self.0.read().await.get(ip) {
             Some(x) => Some(x.read().await.availability_by_avg),
             _ => None
         }
     }
 
-    pub async fn get_availability_by_loss(&self, ip: &IpAddr) -> Option<&'static str> {
+    pub async fn get_availability_by_loss(&self, ip: &IpAddr) -> Option<(&'static str, &'static str)> {
         match self.0.read().await.get(ip) {
             Some(x) => Some(x.read().await.availability_by_loss),
             _ => None
         }
     }
 
-    fn decode_availability(x: f64) -> &'static str {
+    fn decode_availability(x: f64) -> (&'static str, &'static str) {
         match x {
-            x if x >= 0.99995 => ">99.99%",
-            x if x >= 0.9999 => "99.99%",
-            x if x >= 0.9995 => "99.95%",
-            x if x >= 0.999 => "99.9%",
-            x if x >= 0.998 => "99.8%",
-            x if x >= 0.995 => "99.5%",
-            x if x >= 0.99 => "99%",
-            x if x >= 0.98 => "98%",
-            x if x >= 0.97 => "97%",
-            x if x >= 0.95 => "95%",
-            x if x >= 0.90 => "90%",
-            _ => "<90%"
+            x if x >= 0.99995 => (">99.99%", "brightgreen"),
+            x if x >= 0.9999 => ("99.99%", "brightgreen"),
+            x if x >= 0.9995 => ("99.95%", "green"),
+            x if x >= 0.999 => ("99.9%", "green"),
+            x if x >= 0.998 => ("99.8%", "yellowgreen"),
+            x if x >= 0.995 => ("99.5%", "yellowgreen"),
+            x if x >= 0.99 => ("99%", "yellow"),
+            x if x >= 0.98 => ("98%", "yellow"),
+            x if x >= 0.97 => ("97%", "orange"),
+            x if x >= 0.95 => ("95%", "orange"),
+            x if x >= 0.90 => ("90%", "red"),
+            _ => ("<90%", "red")
         }
     }
 
@@ -73,8 +73,8 @@ impl SharedState {
             (*my_state_lock).t_pings = 0;
             (*my_state_lock).s_pings = 0;
             (*my_state_lock).f_pings = 0;
-            (*my_state_lock).availability_by_avg = "??%";
-            (*my_state_lock).availability_by_loss = ">99.99%";
+            (*my_state_lock).availability_by_avg = ("??%", "lightgrey");
+            (*my_state_lock).availability_by_loss = (">99.99%", "brightgreen");
         } else {
             my_state_lock.t_pings += 1;
             my_state_lock.s_pings += 1;
@@ -95,8 +95,8 @@ impl SharedState {
             (*my_state_lock).t_pings = 0;
             (*my_state_lock).s_pings = 0;
             (*my_state_lock).f_pings = 0;
-            (*my_state_lock).availability_by_avg = "??%";
-            (*my_state_lock).availability_by_loss = ">99.99%";
+            (*my_state_lock).availability_by_avg = ("??%", "lightgrey");
+            (*my_state_lock).availability_by_loss = (">99.99%", "brightgreen");
         } else {
             my_state_lock.t_pings += 1;
             my_state_lock.f_pings += 1;

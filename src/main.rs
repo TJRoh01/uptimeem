@@ -125,12 +125,13 @@ async fn handle(
     };
 
     match uptime_str {
-        Some(x) => {
+        Some((percentage, color)) => {
             return Ok(Response::new(Body::from(format!("{{\
                 \"schemaVersion\": 1,\
                 \"label\": \"uptime\",\
-                \"message\": \"{}\"\
-                }}", x
+                \"message\": \"{}\",\
+                \"color\": \"{}\"\
+                }}", percentage, color
             ))))
         },
         None => {
@@ -145,7 +146,8 @@ async fn handle(
             return Ok(Response::new(Body::from("{\
                 \"schemaVersion\": 1,\
                 \"label\": \"uptime\",\
-                \"message\": \"??%\"\
+                \"message\": \"??%\",\
+                \"color\": \"lightgrey\"\
                 }"
             )))
         }
