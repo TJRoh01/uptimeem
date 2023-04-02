@@ -1,20 +1,26 @@
 use std::convert::Infallible;
-use std::env;
+use std::{env, io};
+use std::io::ErrorKind;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 use std::time::Duration;
 
 use hyper::{Body, Request, Response, Server};
+use hyper::server::conn::AddrIncoming;
 use hyper::service::{make_service_fn, service_fn};
 use surge_ping::{Client, Config, ICMP, PingIdentifier, PingSequence};
 use tokio::net::lookup_host;
+use tokio::runtime::Handle;
 use tokio::sync::Mutex;
 use tokio::task::JoinSet;
 use tokio::time::MissedTickBehavior;
+use warp::Filter;
 
 use crate::state::SharedState;
+use crate::tls::{load_certs, load_private_key, TlsAcceptor};
 
 mod state;
+mod tls;
 
 const PING_INTERVAL: Duration = Duration::from_secs(15);
 const PING_TIMEOUT: Duration = Duration::from_secs(5);
@@ -55,8 +61,22 @@ async fn main() {
         async move { Ok::<_, Infallible>(service) }
     });
 
-    let addr = SocketAddr::from(([0, 0, 0, 0], 80));
-    let server = Server::bind(&addr).serve(make_service);
+    let tls_cfg = {
+        let certs = load_certs("/etc/uptimeem/sample.pem").unwrap();
+        let key = load_private_key("/etc/uptimeem/sample.key").unwrap();
+
+        let mut cfg = rustls::ServerConfig::builder()
+            .with_safe_defaults()
+            .with_no_client_auth()
+            .with_single_cert(certs, key)
+            .map_err(|e| io::Error::new(ErrorKind::Other, format!("{}", e))).unwrap();
+
+        cfg.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec(), b"http/1.0".to_vec()];
+        Arc::new(cfg)
+    };
+
+    let addr = SocketAddr::from(([0, 0, 0, 0], 443));
+    let server = Server::builder(TlsAcceptor::new(tls_cfg, AddrIncoming::bind(&addr).unwrap())).serve(make_service);
 
     if let Err(e) = server.await {
         eprintln!("server error: {}", e);
@@ -70,7 +90,7 @@ async fn handle(
     client_v6: Client,
     req: Request<Body>,
 ) -> Result<Response<Body>, Infallible> {
-    let (representation, ip_str) = match req.uri().path().trim_end_matches("/").split("/").skip(1).collect::<Vec<&str>>()[..] {
+        let (representation, ip_str) = match req.uri().path().trim_end_matches("/").split("/").skip(1).collect::<Vec<&str>>()[..] {
         [target, "by_avg"] if target.len() > 0 && target.len() <= 253 => ("by_avg", target),
         [target, "by_loss"] if target.len() > 0 && target.len() <= 253 => ("by_loss", target),
         _ => {

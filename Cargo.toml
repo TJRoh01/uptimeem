@@ -1,6 +1,6 @@
 [package]
 name = "uptimeem"
-version = "0.1.0"
+version = "0.2.0"
 description = "Service to monitor and report uptime of remote hosts"
 repository = "https://github.com/TJRoh01/uptimeem"
 license = "MIT OR Apache-2.0"
@@ -9,16 +9,22 @@ edition = "2021"
 
 [dependencies]
 hyper = { version = "0.14.25", features = ["full"] }
+hyper-rustls = "0.24.0"
 rand = "0.8.5"
+rustls = "0.21.0"
+rustls-pemfile = "1.0.2"
 surge-ping = "0.7.3"
 tokio = { version = "1.26.0", features = ["macros", "net", "rt-multi-thread", "time"]}
+tokio-rustls = "0.24.0"
+warp = { version = "0.3.4", features = ["tls"]}
 [package.metadata.rpm]
 package = "uptimeem"
 
 [package.metadata.generate-rpm]
 release = "1"
 requires = { shadow-utils = "*" }
-post_install_script = "(getent group uptimeem >/dev/null || groupadd -r uptimeem) && (getent passwd uptimeem >/dev/null || useradd -r -g uptimeem -s /sbin/nologin -c \"User for running uptimeem.service\" uptimeem) && setcap CAP_NET_RAW,CAP_NET_BIND_SERVICE=+eip /usr/bin/uptimeem"
+pre_install_script = "mkdir -p /etc/uptimeem"
+post_install_script = "(getent group uptimeem >/dev/null || groupadd -r uptimeem) && (getent passwd uptimeem >/dev/null || useradd -r -g uptimeem -s /sbin/nologin -c \"User for running uptimeem.service\" uptimeem) && setcap CAP_NET_RAW,CAP_NET_BIND_SERVICE=+eip /usr/bin/uptimeem && setfacl -m u:uptimeem:r /etc/uptimeem/sample.rsa && setfacl -m g:uptimeem:r /etc/uptimeem/sample.rsa && systemctl daemon-reload"
 assets = [
     { source = "target/release/uptimeem", dest = "/usr/bin/uptimeem", mode = "755", user = "root", group = "root" },
     { source = "uptimeem.service", dest = "/usr/lib/systemd/system/uptimeem.service", mode = "644", user = "root", group = "root" }
