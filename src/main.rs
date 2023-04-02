@@ -89,6 +89,15 @@ async fn handle(
     req: Request<Body>,
 ) -> Result<Response<Body>, Infallible> {
         let (representation, ip_str) = match req.uri().path().trim_end_matches("/").split("/").skip(1).collect::<Vec<&str>>()[..] {
+        ["num_tracked"] => {
+            return Ok(Response::new(Body::from(format!("{{\
+                \"schemaVersion\": 1,\
+                \"label\": \"tracked hosts\",\
+                \"message\": \"{}\",\
+                \"color\": \"blue\"\
+                }}", shared_state.get_num_tracked()
+            ))))
+        },
         [target, "by_avg"] if target.len() > 0 && target.len() <= 253 => ("by_avg", target),
         [target, "by_loss"] if target.len() > 0 && target.len() <= 253 => ("by_loss", target),
         _ => {

@@ -1,11 +1,12 @@
 use std::collections::HashMap;
 use std::net::IpAddr;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use tokio::sync::RwLock;
 
 #[derive(Clone)]
-pub struct SharedState(Arc<RwLock<HashMap<IpAddr, RwLock<Metric>>>>);
+pub struct SharedState(Arc<AtomicU64>, Arc<RwLock<HashMap<IpAddr, RwLock<Metric>>>>);
 
 #[derive(Debug)]
 struct Metric {
@@ -18,11 +19,17 @@ struct Metric {
 
 impl SharedState {
     pub fn new() -> Self {
-        Self(Arc::new(RwLock::new(HashMap::new())))
+        Self(Arc::new(AtomicU64::new(0)), Arc::new(RwLock::new(HashMap::new())))
+    }
+
+    pub fn get_num_tracked(&self) -> u64 {
+        self.0.load(Ordering::Relaxed)
     }
 
     pub async fn insert(&self, ip: IpAddr) {
-        self.0.write().await.insert(ip, RwLock::new(Metric {
+        self.0.fetch_add(1, Ordering::Relaxed);
+
+        self.1.write().await.insert(ip, RwLock::new(Metric {
             availability_by_avg: ("??%", "lightgrey"),
             availability_by_loss: (">99.99%", "brightgreen"),
             t_pings: 0,
@@ -32,14 +39,14 @@ impl SharedState {
     }
 
     pub async fn get_availability_by_avg(&self, ip: &IpAddr) -> Option<(&'static str, &'static str)> {
-        match self.0.read().await.get(ip) {
+        match self.1.read().await.get(ip) {
             Some(x) => Some(x.read().await.availability_by_avg),
             _ => None
         }
     }
 
     pub async fn get_availability_by_loss(&self, ip: &IpAddr) -> Option<(&'static str, &'static str)> {
-        match self.0.read().await.get(ip) {
+        match self.1.read().await.get(ip) {
             Some(x) => Some(x.read().await.availability_by_loss),
             _ => None
         }
@@ -63,7 +70,7 @@ impl SharedState {
     }
 
     pub async fn succ_ping(&self, ip: &IpAddr) -> bool {
-        let shared_state_lock = self.0.read().await;
+        let shared_state_lock = self.1.read().await;
         let mut my_state_lock = match shared_state_lock.get(ip) {
             Some(x) => x.write().await,
             _ => return false
@@ -85,7 +92,7 @@ impl SharedState {
     }
 
     pub async fn fail_ping(&self, ip: &IpAddr) -> bool {
-        let shared_state_lock = self.0.read().await;
+        let shared_state_lock = self.1.read().await;
         let mut my_state_lock = match shared_state_lock.get(ip) {
             Some(x) => x.write().await,
             _ => return false
