@@ -16,7 +16,6 @@ rustls-pemfile = "1.0.2"
 surge-ping = "0.7.3"
 tokio = { version = "1.26.0", features = ["macros", "net", "rt-multi-thread", "time"]}
 tokio-rustls = "0.24.0"
-warp = { version = "0.3.4", features = ["tls"]}
 [package.metadata.rpm]
 package = "uptimeem"
 

@@ -1,5 +1,5 @@
-use std::convert::Infallible;
 use std::{env, io};
+use std::convert::Infallible;
 use std::io::ErrorKind;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
@@ -10,11 +10,9 @@ use hyper::server::conn::AddrIncoming;
 use hyper::service::{make_service_fn, service_fn};
 use surge_ping::{Client, Config, ICMP, PingIdentifier, PingSequence};
 use tokio::net::lookup_host;
-use tokio::runtime::Handle;
 use tokio::sync::Mutex;
 use tokio::task::JoinSet;
 use tokio::time::MissedTickBehavior;
-use warp::Filter;
 
 use crate::state::SharedState;
 use crate::tls::{load_certs, load_private_key, TlsAcceptor};
