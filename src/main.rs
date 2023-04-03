@@ -17,6 +17,7 @@ use tokio::time::MissedTickBehavior;
 use crate::state::SharedState;
 use crate::tls::{load_certs, load_private_key, TlsAcceptor};
 
+mod colors;
 mod state;
 mod tls;
 
@@ -120,7 +121,7 @@ async fn handle(
         _ => return Ok(Response::new(Body::from("{\
             \"schemaVersion\": 1,\
             \"label\": \"uptime\",\
-            \"message\": \"unreachable hostname\",\
+            \"message\": \"unresolvable hostname\",\
             \"color\": \"critical\",\
             \"isError\": true\
             }"

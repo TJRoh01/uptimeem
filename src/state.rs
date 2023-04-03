@@ -5,6 +5,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use tokio::sync::RwLock;
 
+use crate::colors;
+
 #[derive(Clone)]
 pub struct SharedState(Arc<AtomicU64>, Arc<RwLock<HashMap<IpAddr, RwLock<Metric>>>>);
 
@@ -30,8 +32,8 @@ impl SharedState {
         self.0.fetch_add(1, Ordering::Relaxed);
 
         self.1.write().await.insert(ip, RwLock::new(Metric {
-            availability_by_avg: ("??%", "lightgrey"),
-            availability_by_loss: (">99.99%", "brightgreen"),
+            availability_by_avg: ("??%", colors::LIGHTGREY),
+            availability_by_loss: (">99.99%", colors::BRIGHTGREEN),
             t_pings: 0,
             s_pings: 0,
             f_pings: 0
@@ -54,18 +56,18 @@ impl SharedState {
 
     fn decode_availability(x: f64) -> (&'static str, &'static str) {
         match x {
-            x if x >= 0.99995 => (">99.99%", "brightgreen"),
-            x if x >= 0.9999 => ("99.99%", "brightgreen"),
-            x if x >= 0.9995 => ("99.95%", "green"),
-            x if x >= 0.999 => ("99.9%", "green"),
-            x if x >= 0.998 => ("99.8%", "yellowgreen"),
-            x if x >= 0.995 => ("99.5%", "yellowgreen"),
-            x if x >= 0.99 => ("99%", "yellow"),
-            x if x >= 0.98 => ("98%", "yellow"),
-            x if x >= 0.97 => ("97%", "orange"),
-            x if x >= 0.95 => ("95%", "orange"),
-            x if x >= 0.90 => ("90%", "red"),
-            _ => ("<90%", "red")
+            x if x >= 0.99995 => (">99.99%", colors::BRIGHTGREEN),
+            x if x >= 0.9999 => ("99.99%", colors::BRIGHTGREEN),
+            x if x >= 0.9995 => ("99.95%", colors::GREEN),
+            x if x >= 0.999 => ("99.9%", colors::GREEN),
+            x if x >= 0.998 => ("99.8%", colors::YELLOWGREEN),
+            x if x >= 0.995 => ("99.5%", colors::YELLOWGREEN),
+            x if x >= 0.99 => ("99%", colors::YELLOW),
+            x if x >= 0.98 => ("98%", colors::YELLOW),
+            x if x >= 0.97 => ("97%", colors::ORANGE),
+            x if x >= 0.95 => ("95%", colors::ORANGE),
+            x if x >= 0.90 => ("90%", colors::RED),
+            _ => ("<90%", colors::RED)
         }
     }
 
@@ -80,8 +82,8 @@ impl SharedState {
             (*my_state_lock).t_pings = 0;
             (*my_state_lock).s_pings = 0;
             (*my_state_lock).f_pings = 0;
-            (*my_state_lock).availability_by_avg = ("??%", "lightgrey");
-            (*my_state_lock).availability_by_loss = (">99.99%", "brightgreen");
+            (*my_state_lock).availability_by_avg = ("??%", colors::LIGHTGREY);
+            (*my_state_lock).availability_by_loss = (">99.99%", colors::BRIGHTGREEN);
         } else {
             my_state_lock.t_pings += 1;
             my_state_lock.s_pings += 1;
@@ -102,8 +104,8 @@ impl SharedState {
             (*my_state_lock).t_pings = 0;
             (*my_state_lock).s_pings = 0;
             (*my_state_lock).f_pings = 0;
-            (*my_state_lock).availability_by_avg = ("??%", "lightgrey");
-            (*my_state_lock).availability_by_loss = (">99.99%", "brightgreen");
+            (*my_state_lock).availability_by_avg = ("??%", colors::LIGHTGREY);
+            (*my_state_lock).availability_by_loss = (">99.99%", colors::BRIGHTGREEN);
         } else {
             my_state_lock.t_pings += 1;
             my_state_lock.f_pings += 1;
