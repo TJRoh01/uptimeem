@@ -30,6 +30,14 @@ pub fn load_private_key(filename: &str) -> io::Result<rustls::PrivateKey> {
     let mut reader = BufReader::new(keyfile);
 
     let keys = rustls_pemfile::ec_private_keys(&mut reader)
+        .or_else(|_| {
+            let mut reader = BufReader::new(File::open(filename).unwrap());
+            rustls_pemfile::rsa_private_keys(&mut reader)
+        })
+        .or_else(|_| {
+            let mut reader = BufReader::new(File::open(filename).unwrap());
+            rustls_pemfile::pkcs8_private_keys(&mut reader)
+        })
         .map_err(|_| io::Error::new(ErrorKind::Other, "failed to load private key".to_string()))?;
     if keys.len() != 1 {
         return Err(io::Error::new(ErrorKind::Other, "expected a single private key".to_string()));

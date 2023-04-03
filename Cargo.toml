@@ -1,6 +1,6 @@
 [package]
 name = "uptimeem"
-version = "0.4.0"
+version = "0.5.0"
 description = "Service to monitor and report uptime of remote hosts"
 repository = "https://github.com/TJRoh01/uptimeem"
 license = "MIT OR Apache-2.0"
@@ -22,9 +22,11 @@ package = "uptimeem"
 [package.metadata.generate-rpm]
 release = "1"
 requires = { shadow-utils = "*" }
-pre_install_script = "mkdir -p /etc/uptimeem"
-post_install_script = "(getent group uptimeem >/dev/null || groupadd -r uptimeem) && (getent passwd uptimeem >/dev/null || useradd -r -g uptimeem -s /sbin/nologin -c \"User for running uptimeem.service\" uptimeem) && setcap CAP_NET_RAW,CAP_NET_BIND_SERVICE=+eip /usr/bin/uptimeem && setfacl -m u:uptimeem:r /etc/uptimeem/sample.rsa && setfacl -m g:uptimeem:r /etc/uptimeem/sample.rsa && systemctl daemon-reload"
+pre_install_script = "mkdir -p /etc/uptimeem && touch ssl.pem && touch /etc/uptimeem/ssl.key && setfacl -m u:uptimeem:r /etc/uptimeem/ssl.key && setfacl -m g:uptimeem:r /etc/uptimeem/ssl.key"
+post_install_script = "(getent group uptimeem >/dev/null || groupadd -r uptimeem) && (getent passwd uptimeem >/dev/null || useradd -r -g uptimeem -s /sbin/nologin -c \"User for running uptimeem.service\" uptimeem) && setcap CAP_NET_RAW,CAP_NET_BIND_SERVICE=+eip /usr/bin/uptimeem && systemctl enable uptimeem.service && systemctl start uptimeem.service"
+pre_uninstall_script = "systemctl unmask uptimeem.service && systemctl stop uptimeem.service && systemctl disable uptimeem.service"
+post_uninstall_script = "systemctl daemon-reload && systemctl reset-failed"
 assets = [
     { source = "target/release/uptimeem", dest = "/usr/bin/uptimeem", mode = "755", user = "root", group = "root" },
-    { source = "uptimeem.service", dest = "/usr/lib/systemd/system/uptimeem.service", mode = "644", user = "root", group = "root" }
+    { source = "pkg/uptimeem.service", dest = "/usr/lib/systemd/system/uptimeem.service", mode = "644", user = "root", group = "root" }
 ]

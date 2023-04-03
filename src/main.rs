@@ -60,8 +60,8 @@ async fn main() {
     });
 
     let tls_cfg = {
-        let certs = load_certs("/etc/uptimeem/sample.pem").unwrap();
-        let key = load_private_key("/etc/uptimeem/sample.key").unwrap();
+        let certs = load_certs("/etc/uptimeem/ssl.pem").unwrap();
+        let key = load_private_key("/etc/uptimeem/ssl.key").unwrap();
 
         let mut cfg = rustls::ServerConfig::builder()
             .with_safe_defaults()
