@@ -34,7 +34,7 @@ impl SharedState {
 
         self.inner.1.write().await.insert(ip, RwLock::new(Metric {
             uptime_by_avg: Uptime::UpUnknown,
-            uptime_by_loss: Uptime::UpUnknown,
+            uptime_by_loss: Uptime::UpMax,
             t_pings: 0,
             s_pings: 0,
             f_pings: 0
