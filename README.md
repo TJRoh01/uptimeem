@@ -43,8 +43,8 @@ Format:
 - HTML: `<img alt="uptime by uptimeem" src="https://img.shields.io/endpoint?url=https://api.uptimeem.com/<HOST>/<MODE>">`
 
 Examples:
-- `![uptime by uptimeem](https://img.shields.io/endpoint?url=https://api.uptimeem.com/1.1.1.1/by_avg)`
-- `![uptime by uptimeem](https://img.shields.io/endpoint?url=https://api.uptimeem.com/rust-lang.org/by_loss)`
+- `![uptime by uptimeem](https://img.shields.io/endpoint?url=https://api.uptimeem.com/1.1.1.1/by_avg)` -> ![uptime by uptimeem](https://img.shields.io/endpoint?url=https://api.uptimeem.com/1.1.1.1/by_avg)
+- `![uptime by uptimeem](https://img.shields.io/endpoint?url=https://api.uptimeem.com/rust-lang.org/by_loss)` -> ![uptime by uptimeem](https://img.shields.io/endpoint?url=https://api.uptimeem.com/rust-lang.org/by_loss)
 
 `HOST` parameter:
 - Can be `IPv4`, `IPv6`, `domain.tld`, `(subsubdomain).subdomain.domain.tld`
