@@ -3,6 +3,7 @@ use std::net::IpAddr;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::sync::RwLock;
+use crate::MIN_SAMPLES;
 use crate::uptime::Uptime;
 
 #[derive(Clone)]
@@ -33,7 +34,7 @@ impl SharedState {
 
         self.inner.1.write().await.insert(ip, RwLock::new(Metric {
             uptime_by_avg: Uptime::UpUnknown,
-            uptime_by_loss: Uptime::UpMax,
+            uptime_by_loss: Uptime::UpUnknown,
             t_pings: 0,
             s_pings: 0,
             f_pings: 0
@@ -61,16 +62,18 @@ impl SharedState {
             _ => return false
         };
 
-        if my_state_lock.t_pings == u16::MAX {
-            (*my_state_lock).t_pings = 0;
-            (*my_state_lock).s_pings = 0;
-            (*my_state_lock).f_pings = 0;
-            (*my_state_lock).uptime_by_avg = Uptime::UpUnknown;
-            (*my_state_lock).uptime_by_loss = Uptime::UpMax;
-        } else {
+        if my_state_lock.t_pings < MIN_SAMPLES {
             my_state_lock.t_pings += 1;
             my_state_lock.s_pings += 1;
+        } else if my_state_lock.t_pings < u16::MAX {
+            my_state_lock.t_pings += 1;
+            my_state_lock.s_pings += 1;
+
             (*my_state_lock).uptime_by_avg = Uptime::from_f64(my_state_lock.s_pings as f64 / my_state_lock.t_pings as f64);
+        } else {
+            (*my_state_lock).t_pings = 1;
+            (*my_state_lock).s_pings = 1;
+            (*my_state_lock).f_pings = 0;
         }
 
         true
@@ -83,17 +86,19 @@ impl SharedState {
             _ => return false
         };
 
-        if my_state_lock.t_pings == u16::MAX {
-            (*my_state_lock).t_pings = 0;
-            (*my_state_lock).s_pings = 0;
-            (*my_state_lock).f_pings = 0;
-            (*my_state_lock).uptime_by_avg = Uptime::UpUnknown;
-            (*my_state_lock).uptime_by_loss = Uptime::UpMax;
-        } else {
+        if my_state_lock.t_pings < MIN_SAMPLES {
             my_state_lock.t_pings += 1;
             my_state_lock.f_pings += 1;
+        } else if my_state_lock.t_pings < u16::MAX {
+            my_state_lock.t_pings += 1;
+            my_state_lock.f_pings += 1;
+
             (*my_state_lock).uptime_by_avg = Uptime::from_f64(my_state_lock.s_pings as f64 / my_state_lock.t_pings as f64);
             (*my_state_lock).uptime_by_loss = Uptime::from_f64((u16::MAX - my_state_lock.f_pings) as f64 / u16::MAX as f64);
+        } else {
+            (*my_state_lock).t_pings = 1;
+            (*my_state_lock).s_pings = 0;
+            (*my_state_lock).f_pings = 1;
         }
 
         true
