@@ -1,4 +1,4 @@
-# uptime by uptimeem
+# uptime 'em
 `uptime 'em` is a simple host uptime tracker that provides JSON endpoints for [shields.io](https://shields.io).  
 
 Number of hosts currently tracked by the service **->** ![uptimeem num_tracked](https://img.shields.io/endpoint?url=https://api.uptimeem.com/num_tracked)  
