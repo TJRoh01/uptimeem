@@ -7,6 +7,8 @@ Current version hosted at `api.uptimeem.com` **->** ![uptimeem version](https://
 It is designed around efficiency and simplicity, which means it does not use a lot of resources and in turn that allows
 me to make it available free of charge. There are no API-keys, accounts, etc. 
 
+You are welcome to use this in your projects to easily show off for example your backend's uptime on your project page. 
+
 ## Usage
 How the service works:
 - Sends an ICMP ping every **15 seconds** to hosts in its list
