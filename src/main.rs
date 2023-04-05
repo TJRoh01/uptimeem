@@ -99,6 +99,15 @@ async fn handle(
                 }}", shared_state.get_num_tracked()
             ))))
         },
+        ["version"] => {
+            return Ok(Response::new(Body::from(format!("{{\
+            \"schemaVersion\": 1,\
+            \"label\": \"hosted version\",\
+            \"message\": \"{}\",\
+            \"color\": \"blue\"\
+            }}", env!("CARGO_PKG_VERSION")
+            ))))
+        },
         [target, "by_avg"] if target.len() > 0 && target.len() <= 253 => ("by_avg", target),
         [target, "by_loss"] if target.len() > 0 && target.len() <= 253 => ("by_loss", target),
         _ => {
