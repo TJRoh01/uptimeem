@@ -2,7 +2,7 @@
 ![GitHub](https://img.shields.io/github/license/TJRoh01/uptimeem)
 ![GitHub last commit](https://img.shields.io/github/last-commit/TJRoh01/uptimeem?style=flat)
 
-`uptime 'em` is a simple uptime monitor, with JSON endpoints for [shields.io](https://shields.io).  
+`uptime 'em` is a simple host uptime tracker that provides JSON endpoints for [shields.io](https://shields.io).  
 Number of hosts currently tracked by the service **->** ![uptimeem num_tracked](https://img.shields.io/endpoint?url=https://api.uptimeem.com/num_tracked)
 
 It is designed around efficiency and simplicity, which means it does not use a lot of resources and in turn that allows
@@ -11,7 +11,7 @@ me to make it available free of charge. There are no API-keys, accounts, etc.
 ## Usage
 How the service works:
 - Sends an ICMP ping every **15 seconds** to hosts in its list
-- Resets ping counters every `2^16 - 1` pings (per host)
+- Resets ping counter every `2^16 - 1` pings (per host)
 - When the uptime of a host is requested for the first time it is added to its list of hosts, and the uptime will be
 actively tracked from then on
 - The shields.io CDN caches content for 5 minutes, so your badge can not update more than once every 5 minutes
@@ -50,7 +50,7 @@ Examples:
 `HOST` parameter:
 - Can be `IPv4`, `IPv6`, `domain.tld`, `(subsubdomain).subdomain.domain.tld`
 - Do **NOT** include protocol (`http://`, `sftp://`, etc. are invalid)
-- Do **NOT** include port (www.mydomain.com`:22`, 101.102.103.104:`:8080`, etc. are invalid)
+- Do **NOT** include port (mydomain.com`:22`, 101.102.103.104`:8080`, etc. are invalid)
 
 `MODE` parameter:  
 I could not make up my mind which one of the following is better, so I decided to implement both and let you
