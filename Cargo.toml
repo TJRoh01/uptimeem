@@ -1,6 +1,6 @@
 [package]
 name = "uptimeem"
-version = "0.5.5"
+version = "0.5.6"
 description = "Service to monitor and report uptime of remote hosts"
 repository = "https://github.com/TJRoh01/uptimeem"
 license = "MIT OR Apache-2.0"

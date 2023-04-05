@@ -22,7 +22,7 @@ mod uptime;
 
 const PING_INTERVAL: Duration = Duration::from_secs(15);
 const PING_TIMEOUT: Duration = Duration::from_secs(5);
-const MIN_SAMPLES: u16 = 20; // 5 minutes
+const MIN_SAMPLES: u16 = 16; // 4 minutes
 
 type SharedJoinSet = Arc<Mutex<JoinSet<()>>>;
 
