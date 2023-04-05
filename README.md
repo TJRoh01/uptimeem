@@ -1,8 +1,6 @@
 # uptime by uptimeem
-![GitHub](https://img.shields.io/github/license/TJRoh01/uptimeem)
-![GitHub last commit](https://img.shields.io/github/last-commit/TJRoh01/uptimeem?style=flat)
-
 `uptime 'em` is a simple host uptime tracker that provides JSON endpoints for [shields.io](https://shields.io).  
+
 Number of hosts currently tracked by the service **->** ![uptimeem num_tracked](https://img.shields.io/endpoint?url=https://api.uptimeem.com/num_tracked)  
 Current version hosted at `api.uptimeem.com` **->** ![uptimeem version](https://img.shields.io/endpoint?url=https://api.uptimeem.com/version)
 
@@ -64,3 +62,4 @@ exactly how much resources the current implementations require.
 
 ## Note
 **PLEASE** do not request the service (api.uptimeem.com) directly, and always go through [shields.io](https://shields.io)!
+This is to not put too much strain on the service itself.
