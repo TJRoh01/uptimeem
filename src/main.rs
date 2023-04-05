@@ -17,7 +17,7 @@ use tokio::time::MissedTickBehavior;
 use crate::state::SharedState;
 use crate::tls::{load_certs, load_private_key, TlsAcceptor};
 
-mod colors;
+mod color;
 mod state;
 mod tls;
 
