@@ -4,7 +4,6 @@ use std::io::ErrorKind;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 use std::time::Duration;
-
 use hyper::{Body, Request, Response, Server};
 use hyper::server::conn::AddrIncoming;
 use hyper::service::{make_service_fn, service_fn};
@@ -13,7 +12,6 @@ use tokio::net::lookup_host;
 use tokio::sync::Mutex;
 use tokio::task::JoinSet;
 use tokio::time::MissedTickBehavior;
-
 use crate::state::SharedState;
 use crate::tls::{load_certs, load_private_key, TlsAcceptor};
 
@@ -28,7 +26,7 @@ const MIN_SAMPLES: u16 = 20; // 5 minutes
 
 type SharedJoinSet = Arc<Mutex<JoinSet<()>>>;
 
-#[tokio::main(flavor = "multi_thread", worker_threads = 4)]
+#[tokio::main(flavor = "multi_thread")]
 async fn main() {
     let interface = match env::var("IFACE") {
         Ok(x) => Some(x),

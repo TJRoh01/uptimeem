@@ -5,7 +5,6 @@ use std::io::{BufReader, ErrorKind};
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll, ready};
-
 use hyper::server::accept::Accept;
 use hyper::server::conn::{AddrIncoming, AddrStream};
 use rustls::ServerConfig;
