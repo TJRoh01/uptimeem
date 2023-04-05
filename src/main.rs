@@ -20,6 +20,7 @@ use crate::tls::{load_certs, load_private_key, TlsAcceptor};
 mod color;
 mod state;
 mod tls;
+mod uptime;
 
 const PING_INTERVAL: Duration = Duration::from_secs(15);
 const PING_TIMEOUT: Duration = Duration::from_secs(5);
@@ -129,8 +130,8 @@ async fn handle(
     };
 
     let uptime_str = match representation {
-        "by_avg" => shared_state.get_availability_by_avg(&ip_addr).await,
-        "by_loss" => shared_state.get_availability_by_loss(&ip_addr).await,
+        "by_avg" => shared_state.get_uptime_by_avg(&ip_addr).await,
+        "by_loss" => shared_state.get_uptime_by_loss(&ip_addr).await,
         _ => unreachable!()
     };
 
